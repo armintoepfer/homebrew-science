@@ -16,36 +16,16 @@ class Blasr < Formula
   end
 
   depends_on "hdf5"
-
-  # https://github.com/PacificBiosciences/blasr/issues/28
-  fails_with :clang do
-    build 602
-    cause <<-EOS.undent
-      error: destructor type 'HDFWriteBuffer<int>' in object
-      destruction expression does not match the type
-      'BufferedHDFArray<int>' of the object being destroyed
-    EOS
-  end
-
-  fails_with :gcc do
-    build 5666
-    cause <<-EOS.undent
-      error: invalid conversion
-      from 'void (*)(H5::H5Object&, std::string, void*)'
-      to 'void (*)(H5::H5Location&, std::string, void*)'
-    EOS
-  end
+  depends_on "cmake" => :build
+  depends_on "ninja" => :build
+  depends_on "ccache" => :build
 
   def install
     hdf5 = Formula["hdf5"]
-    system "make", "STATIC=",
-      "HDF5INCLUDEDIR=#{hdf5.opt_include}",
-      "HDF5LIBDIR=#{hdf5.opt_lib}"
-
-    # Fix the error: install: mkdir /usr/local/Cellar/blasr/2.2/bin: exists
-    ENV.deparallelize
-
-    system "make", "install", "PREFIX=#{prefix}"
+    mkdir "build" do
+      system "cmake", "-GNinja", "-DHDF5_INCLUDE_DIRS=#{hdf5.opt_include}", "-DHDF5_LIBRARIES=#{hdf5.opt_lib}", "..", *std_cmake_args
+      system "ninja", "install"
+     end
   end
 
   test do
